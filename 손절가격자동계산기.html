@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>웹 앱</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px; /* 스프레드시트 위에 20px 마진 추가 */
+        }
+        td, th {
+            border: 1px solid black;
+            padding: 5px;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 80px;
+            text-align: center;
+        }
+        .center {
+            text-align: center;
+        }
+        .highlight {
+            color: red;
+        }
+        button {
+            background-color: #272222;
+            color: #FFFFFF;
+            border: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1.5em;
+            margin-top: 20px; /* 추가된 부분 */
+    
+        }
+    </style>
+</head>
+<body>
+    <label>1.계좌총액: <input type="text" id="accountTotal"></label><br>
+    <label>2.손절비중(%): <input type="text" id="stopLossRatio"></label><br>
+    <table id="spreadsheet">
+        <!-- 셀 생성 -->
+        <tr>
+            <th class="highlight">3.순번</th>
+            <th class="highlight">4.종목코드</th>
+            <th class="highlight">5.종목명</th>
+            <th class="highlight">6.평단</th>
+            <th class="highlight">7.보유주식수</th>
+            <th class="highlight">비중</th>
+            <th>잔고</th>
+            <th>손실한도액</th>
+            <th>손절가</th>
+        </tr>
+    </table>
+    <button onclick="calculate()">계산하기</button>
+
+    <script>
+        // 셀 데이터 초기화
+        let cells = [];
+
+        // 스프레드시트 생성
+        function createSpreadsheet() {
+            let table = document.getElementById("spreadsheet");
+            for (let i = 0; i < 10; i++) {
+                let row = table.insertRow();
+                cells[i] = [];
+                for (let j = 0; j < 9; j++) {
+                    let cell = row.insertCell();
+                    let input = document.createElement("input");
+                    input.type = "text";
+                    input.className = "cell";
+                    cells[i][j] = input;
+                    cell.appendChild(input);
+                }
+                // 종목코드 입력란에 입력이 발생할 때 종목명을 자동으로 가져오는 이벤트 추가
+              
+                // 평단과 보유주식수 입력란에 입력이 발생할 때 비중을 자동으로 계산하는 이벤트 추가
+                cells[i][3].addEventListener('input', function() {
+                    calculateWeight(i);
+                });
+                cells[i][4].addEventListener('input', function() {
+                    calculateWeight(i);
+                });
+            }
+        }
+
+      
+        // 비중 계산
+        function calculateWeight(rowIndex) {
+            let avgPrice = parseFloat(cells[rowIndex][3].value.replace(/,/g, ''));
+            let qty = parseInt(cells[rowIndex][4].value.replace(/,/g, ''));
+            let accountTotal = parseFloat(document.getElementById("accountTotal").value.replace(/,/g, ''));
+            if (!isNaN(avgPrice) && !isNaN(qty) && accountTotal !== 0) {
+                let weight = ((avgPrice * qty) / accountTotal) * 100; // 비중 계산
+                cells[rowIndex][5].value = isNaN(weight) ? "" : weight.toFixed(1) + '%'; // 비중을 퍼센트로 표시
+            } else {
+                cells[rowIndex][5].value = "";
+            }
+        }
+
+        // 계산 함수
+        function calculate() {
+            // 데이터를 가져와서 계산
+            let accountTotal = parseFloat(document.getElementById("accountTotal").value.replace(/,/g, ''));
+            let stopLossRatio = parseFloat(document.getElementById("stopLossRatio").value); // 손절비중
+            let stopLossRatioPercentage = stopLossRatio / 100; // 백분율로 변환
+            
+            let totalStocks = 0;
+            for (let i = 0; i < 10; i++) {
+                if (cells[i][0].value !== "") {
+                    totalStocks++;
+                }
+            }
+            let maxStopLoss = accountTotal * stopLossRatioPercentage / totalStocks;
+            
+            for (let i = 0; i < 10; i++) {
+                if (cells[i][0].value !== "") {
+                    let avgPrice = parseFloat(cells[i][3].value.replace(/,/g, ''));
+                    let qty = parseInt(cells[i][4].value.replace(/,/g, ''));
+                    cells[i][3].value = numberWithCommas(avgPrice); // 평단 콤마 추가
+                    cells[i][4].value = numberWithCommas(qty); // 보유주식수 콤마 추가
+                    cells[i][6].value = numberWithCommas(Math.round(avgPrice * qty)); // 잔고 반올림
+                    cells[i][7].value = numberWithCommas(Math.round(maxStopLoss)); // 손실한도액 반올림
+                    let stopLossPrice = Math.round((avgPrice * qty - maxStopLoss) / qty); // 손절가 반올림
+                    stopLossPrice = Math.max(0, stopLossPrice); // 손절가가 음수일 경우 0으로 설정
+                    cells[i][8].value = numberWithCommas(stopLossPrice);
+                } else {
+                    cells[i][3].value = "";
+                    cells[i][4].value = "";
+                    cells[i][6].value = "";
+                    cells[i][7].value = "";
+                    cells[i][8].value = "";
+                }
+            }
+
+            document.getElementById("accountTotal").value = numberWithCommas(accountTotal); // 계좌 총액 콤마 추가
+        }
+
+        // 숫자를 천단위 구분자로 변환하는 함수
+        function numberWithCommas(number) {
+            return number.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        // 페이지 로드시 스프레드시트 생성
+        window.onload = createSpreadsheet;
+    </script>
+</body>
+</html>
